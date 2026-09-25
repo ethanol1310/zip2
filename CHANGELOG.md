@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [8.6.1](https://github.com/zip-rs/zip2/compare/v8.6.0...v8.6.1)
+
+### <!-- 0 -->🚀 Features
+
+- add `len`, `is_empty` and `entry` to `ZipArchiveMetadata` to read the central directory without `by_index`
+
 ## [8.6.0](https://github.com/zip-rs/zip2/compare/v8.5.1...v8.6.0) - 2026-04-25
 
 ### <!-- 0 -->🚀 Features
