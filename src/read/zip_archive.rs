@@ -30,6 +30,26 @@ pub struct ZipArchiveMetadata {
     pub(crate) zip64_extensible_data_sector: Option<Box<[u8]>>,
 }
 
+impl ZipArchiveMetadata {
+    /// Number of files contained in the central directory.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.files.len()
+    }
+
+    /// Whether the central directory contains no files.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    /// Get a central directory entry by index
+    #[must_use]
+    pub fn entry(&self, index: usize) -> Option<&ZipFileData> {
+        self.files.get_index(index).map(|(_, data)| data)
+    }
+}
+
 #[derive(Debug)]
 pub(crate) struct SharedBuilder {
     pub(crate) files: Vec<super::ZipFileData>,
@@ -321,7 +341,7 @@ impl<R: Read + Seek> ZipArchive<R> {
 
     /// Number of files contained in this zip.
     pub fn len(&self) -> usize {
-        self.shared.files.len()
+        self.shared.len()
     }
 
     /// Get the starting offset of the zip central directory.
@@ -709,6 +729,45 @@ mod tests {
         )))
         .unwrap();
         assert_eq!(reader.len(), 1);
+    }
+
+    #[test]
+    fn metadata_entry_matches_by_index() {
+        use super::ZipArchive;
+        use std::io::Cursor;
+
+        let mut reader = ZipArchive::new(Cursor::new(include_bytes!(
+            "../../tests/data/files_and_dirs.zip"
+        )))
+        .unwrap();
+        let metadata = reader.metadata();
+        assert_eq!(metadata.len(), reader.len());
+        assert!(!metadata.is_empty());
+
+        for i in 0..metadata.len() {
+            let entry = metadata.entry(i).unwrap();
+            let file = reader.by_index(i).unwrap();
+            assert_eq!(&*entry.file_name, file.name());
+            assert_eq!(entry.uncompressed_size, file.size());
+            assert_eq!(entry.compressed_size, file.compressed_size());
+            assert_eq!(entry.central_header_start, file.central_header_start());
+        }
+
+        assert!(metadata.entry(metadata.len()).is_none());
+    }
+
+    #[test]
+    fn metadata_empty_archive() {
+        use super::ZipArchive;
+        use crate::write::ZipWriter;
+        use std::io::Cursor;
+
+        let writer = ZipWriter::new(Cursor::new(Vec::new()));
+        let reader = ZipArchive::new(writer.finish().unwrap()).unwrap();
+        let metadata = reader.metadata();
+        assert_eq!(metadata.len(), 0);
+        assert!(metadata.is_empty());
+        assert!(metadata.entry(0).is_none());
     }
 
     #[test]
